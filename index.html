@@ -86,7 +86,9 @@ h1,h2,h3,p{margin:0}
 .win header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:var(--panel2)}
 .win header h2{font-size:1.4rem}
 .win .x{width:44px;height:44px;border-radius:8px;border:0;background:#0006;font-weight:700}
-.wbody{padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;touch-action:pan-y}
+.wbody{padding:14px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:12px;touch-action:pan-x pan-y;min-height:0}
+.wbody>*{flex:none}
+#modal,.win{touch-action:pan-x pan-y}
 .tabs{display:flex;gap:6px;flex-wrap:wrap}
 .tabs button{border:2px solid var(--line);background:none;border-radius:8px;padding:.3em .8em;font-weight:700;min-height:44px}
 .tabs button[aria-pressed="true"]{background:var(--gold);color:var(--on-gold);border-color:var(--gold)}
@@ -105,9 +107,9 @@ h1,h2,h3,p{margin:0}
 .looks canvas{width:56px;height:56px;display:block}
 .locks{display:flex;gap:8px;justify-content:center;font-size:1.6rem}
 .cq{font-family:var(--num);font-weight:800;font-size:clamp(1.4rem,5vw,2.2rem);text-align:center;text-wrap:balance}
-.scroll{overflow-x:auto}
+.scroll{overflow-x:auto;touch-action:pan-x pan-y;max-width:100%}
 table.heat{border-collapse:separate;border-spacing:3px;font-size:.85rem;font-variant-numeric:tabular-nums;font-family:system-ui,sans-serif}
-.heat th{color:var(--muted);padding:2px 6px}.heat td{width:44px;height:30px;text-align:center;border-radius:5px;background:#0006;color:var(--muted);font-weight:700}
+.heat th{color:var(--muted);padding:2px 6px}.heat td{min-width:40px;height:32px;text-align:center;border-radius:5px;background:#3a4270;color:#dfe4f7;font-weight:700}
 .heat .h1{background:var(--bad);color:#fff}.heat .h2{background:var(--gold);color:var(--on-gold)}.heat .h3{background:#2f9e44;color:#fff}
 .heat .h1::after{content:" !"}.heat .h3::after{content:" ✓"}
 .sw{display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:600}
@@ -328,6 +330,7 @@ try{const raw=localStorage.getItem(KEY); if(raw)S=norm(JSON.parse(raw))}catch(e)
 function save(){S.t=Date.now(); try{localStorage.setItem(KEY,JSON.stringify(S));saveOK=true}catch(e){saveOK=false}}
 const bonus=k=>ITEMS.filter(i=>i.k===k&&S.own[i.id]).reduce((m,i)=>Math.max(m,i.v),0);
 const maxHP=()=>20+5*(S.lvl-1)+bonus('a'), atk=()=>4+S.lvl+bonus('w'), need=l=>15+10*l;
+const pace=()=>['calm','fast','off'].includes(S.set.pace)?S.set.pace:'calm', PACE={calm:'Tranquilo',fast:'Rápido',off:'Sin tiempo'}, tmul=()=>pace()==='calm'?2.5:1;
 const wLevel=()=>S.own.w3?3:S.own.w2?2:S.own.w1?1:0;
 function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 
@@ -475,11 +478,11 @@ let B=null,trans=null;
 function startBattle(e,boss){ if(state!=='world')return; HERO.path=[];HERO.held=-1; trans={t0:performance.now(),e,boss}; setState('trans'); (boss?sfx.boss:sfx.bad)() }
 function beginBattle(e,boss,train){ const def=train?MON[pick(Object.keys(MON).filter(k=>!MON[k].boss))]:boss?MON['b'+boss.i]:MON[e.type], z=def.z;
   B={e,boss,def,z,train,hp0:S.hp,emax:train?atk()*8:boss?60+30*z:14+10*z,eatk:train?2+train.l:boss?5+2*z:3+2*z,combo:0,best:0,q:null,tMax:0,tLeft:0,lock:true,tries:0,done:false,fx:[],fl:[],hAn:0,eAn:0,eHit:0,hHit:0,slash:0,eDead:0};
-  B.ehp=B.emax; if(train)S.hp=maxHP(); setState('battle'); $('eName').textContent=train?OPS[train.op][0]+' · nivel '+(train.l+1):def.n; $('flee').hidden=false; $('bCont').hidden=true; $('answers').hidden=false; $('tWrap').hidden=!S.set.timer; bHud(); ask() }
+  B.ehp=B.emax; if(train)S.hp=maxHP(); setState('battle'); $('eName').textContent=train?OPS[train.op][0]+' · nivel '+(train.l+1):def.n; $('flee').hidden=false; $('bCont').hidden=true; $('answers').hidden=false; $('tWrap').hidden=pace()==='off'; bHud(); ask() }
 function bHud(){ $('bLvl').textContent=S.lvl; $('bHp').style.width=100*S.hp/maxHP()+'%'; $('bHpTxt').textContent=S.hp+'/'+maxHP(); $('eHp').style.width=100*Math.max(0,B.ehp)/B.emax+'%'; $('eHpTxt').textContent=Math.max(0,B.ehp)+'/'+B.emax }
 function ask(){ const types=B.def.q, type=Array.isArray(types)?(B.boss&&B.ehp<B.emax/2&&types.length>2?pick(types):pick(types.slice(0,Math.max(2,types.length-1)))):types;
-  const q=B.q=B.train?genT(B.train.op,B.train.l):genQ(type); B.tries=0; B.tMax=B.tLeft=(q.sec+(S.pet==='owl'?3:0))*1000; B.lock=false;
-  $('bq').className=q.sm?'sm':''; $('bq').innerHTML=q.html; $('bhint').textContent=S.stats.battles===0&&!B.combo?'Responde rápido y sin fallar para hacer combos.':'';
+  const q=B.q=B.train?genT(B.train.op,B.train.l):genQ(type); B.tries=0; B.tMax=B.tLeft=(q.sec*tmul()+(S.pet==='owl'?3:0))*1000; B.lock=false;
+  $('bq').className=q.sm?'sm':''; $('bq').innerHTML=q.html; $('bhint').textContent=S.stats.battles===0&&!B.combo?(pace()==='calm'?'Sin prisa: si aciertas antes de que baje la barra, el golpe es más fuerte.':'Responde rápido y sin fallar para hacer combos.'):'';
   $('answers').innerHTML=q.vals.map(v=>'<button data-v="'+v+'">'+v+'</button>').join('') }
 function floatTxt(t,x,y,col,size){B.fl.push({t,x,y,col,size:size||1,t0:performance.now()})}
 function burst(x,y,col,n){for(let i=0;i<n;i++){const a=Math.random()*6.283,v=.1+Math.random()*.35;B.fx.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-.15,life:500+Math.random()*300,t0:performance.now(),col})}}
@@ -487,7 +490,7 @@ function enemyHits(msg){ const now=performance.now(); B.eAn=now; B.lock=true; co
   setTimeout(()=>{ if(!B||B.done)return; S.hp=Math.max(0,S.hp-dmg); B.hHit=performance.now(); shake=10; sfx.hurt(); floatTxt('-'+dmg,.27,.5,'#ef5158',1.2); bHud(); if(msg)$('bhint').textContent=msg;
     if(S.hp<=0){lose();return} setTimeout(()=>{ if(B&&!B.done)B.lock=false },350) },260) }
 function answer(btn){ if(!B||B.lock||B.done)return; const q=B.q,v=+btn.dataset.v,now=performance.now();
-  if(v===q.ans){ B.lock=true; btn.classList.add('yes'); const first=B.tries===0, crit=first&&S.set.timer&&B.tLeft/B.tMax>.6;
+  if(v===q.ans){ B.lock=true; btn.classList.add('yes'); const first=B.tries===0, crit=first&&pace()!=='off'&&B.tLeft/B.tMax>(pace()==='calm'?.45:.6);
     if(first){B.combo++;B.best=Math.max(B.best,B.combo);S.stats.ok++; if(q.fact)bump(q.fact,true)} else B.combo=0;
     let dmg=B.tries>=2?1:Math.round(atk()*(1+.15*Math.min(Math.max(0,B.combo-1),6))*(crit?(S.pet==='drg'?2:1.5):1)*(B.tries===1?.5:1));
     B.hAn=now; $('bq').innerHTML=q.solved; $('bhint').textContent='';
@@ -497,7 +500,7 @@ function answer(btn){ if(!B||B.lock||B.done)return; const q=B.q,v=+btn.dataset.v
       if(B.ehp<=0){B.eDead=performance.now();setTimeout(win,650)} else setTimeout(()=>{if(B&&!B.done)ask()},first?750:1500) },230);
   } else { btn.classList.add('no'); sfx.bad(); if(B.tries===0){S.stats.ko++; if(q.fact)bump(q.fact,false)} B.tries++; B.combo=0;
     if(B.tries>=2){const ok=[...$('answers').children].find(b=>+b.dataset.v===q.ans); if(ok)ok.classList.add('show')}
-    enemyHits(B.tries>=2?'La respuesta es '+q.ans+'. Tócala.':q.hint); B.tLeft=B.tMax }
+    enemyHits(B.tries>=2?'La respuesta es '+q.ans+'. Tócala.':q.hint) }
 }
 function win(){ if(!B||B.done)return; B.done=true; const z=B.z,boss=B.boss; let xp=boss?40+20*z:6+4*z, coins=boss?50+25*z:4+3*z+rnd(3); if(B.train){xp=8+4*B.train.l;coins=5+3*B.train.l} if(S.pet==='fox')coins=Math.round(coins*1.25);
   coins+=Math.min(B.best,8); S.xp+=xp; S.coins+=coins; S.stats.battles++; if(B.train)S.train[B.train.op+B.train.l]=(S.train[B.train.op+B.train.l]||0)+1; else S.best[B.def.id]=(S.best[B.def.id]||0)+1; let up=0; while(S.xp>=need(S.lvl)){S.xp-=need(S.lvl);S.lvl++;up++} if(up)S.hp=maxHP(); B.up=up;
@@ -513,7 +516,7 @@ function endBattle(){ const b=B; B=null; if(!b)return;
   if(b.boss&&S.boss[b.boss.i]&&!b.lost){ sfx.open(); banner(b.boss.i<3?'¡Cristal conseguido! Se abre el camino':'¡Has salvado Arkania!');
     if(b.boss.i===3)setTimeout(()=>modal('Arkania está a salvo','<p>Has recuperado los cuatro Cristales del Saber. Los monstruos siguen por el mapa: completa el bestiario, consigue todas las katanas y sube de nivel.</p><div class="brow"><button class="btn" data-act="close">Seguir jugando</button></div>'),1800) } }
 function flee(){ if(!B||B.done)return; const b=B; if(b.train){S.hp=b.hp0;B=null;setState('world');hud();openTrain();return} if(b.e){b.e.x=b.e.fx=b.e.hx;b.e.y=b.e.fy=b.e.hy;b.e.t=1;b.e.stun=performance.now()+4000} B=null; setState('world'); hud(); save() }
-function updBattle(dt){ if(!B||B.done||B.lock||!S.set.timer)return; B.tLeft-=dt; if(B.tLeft<=0){B.tLeft=B.tMax;B.combo=0;enemyHits('¡Demasiado lento! El monstruo ataca.')} }
+function updBattle(dt){ if(!B||B.done||B.lock||pace()==='off'||B.tLeft<=0)return; B.tLeft-=dt; if(B.tLeft<=0){ if(pace()==='fast'){B.tLeft=B.tMax;B.combo=0;enemyHits('¡Demasiado lento! El monstruo ataca.')} else B.tLeft=0 } }
 const SKY=[['#6ec6ff','#d6f3ff','#5fae4a','#4f9a3e'],['#1f5a52','#9bd6a8','#3f8a4a','#2f6e3a'],['#8fbcea','#f3faff','#dfeaf5','#b9cde2'],['#2a0f1c','#c2452d','#5a3b3b','#3a2626']];
 function drawBattle(now){ const ph=$('bpanel').offsetHeight, bh=Math.max(120,ch-ph), z=B.z, c=SKY[z];
   let sx=0,sy=0; if(shake>.5){sx=(Math.random()-.5)*shake;sy=(Math.random()-.5)*shake;shake*=.86} ctx.save(); ctx.translate(sx,sy);
@@ -538,7 +541,7 @@ function drawBattle(now){ const ph=$('bpanel').offsetHeight, bh=Math.max(120,ch-
   if(B.combo>=2&&!B.done){ctx.font='700 '+Math.round(Math.max(16,cw*.03))+'px "Segoe UI Emoji","Segoe UI","Lexend",sans-serif';ctx.fillStyle='#000';ctx.fillText('COMBO ×'+B.combo,cw*.5+2,bh*.2+2);ctx.fillStyle='#4ac6ff';ctx.fillText('COMBO ×'+B.combo,cw*.5,bh*.2)}
   ctx.restore();
   if(now-B.hHit<300){ctx.fillStyle='rgba(239,81,88,'+(.35*(1-(now-B.hHit)/300))+')';ctx.fillRect(0,0,cw,bh)}
-  if(S.set.timer&&!B.done){ const r=Math.max(0,B.tLeft/B.tMax); $('tBar').style.width=r*100+'%'; $('tBar').style.background=r>.6?'#ffcf4a':r>.25?'#f08a24':'#ef5158' }
+  if(pace()!=='off'&&!B.done){ const r=Math.max(0,B.tLeft/B.tMax); $('tBar').style.width=r*100+'%'; $('tBar').style.background=r>.6?'#ffcf4a':r>.25?'#f08a24':'#ef5158' }
 }
 function frame(now){ const dt=Math.min(60,now-last); last=now; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
   if(state==='battle'&&B){updBattle(dt);drawBattle(now)}
@@ -571,7 +574,7 @@ function genT(op,l){ let q,a,b; const R=(lo,hi)=>lo+rnd(hi-lo+1);
     else { b=R(2,9); const c=R(11,25),p=b*c; q={html:p+' ÷ '+b+' = '+HOLE,solved:p+' ÷ '+b+' = '+c,ans:c,vals:four(c,shuffle([c+1,c-1,c+10,c-10,c+2])),hint:b+' × 10 = '+b*10+'. Quedan '+(p-b*10)+' por repartir entre '+b+'.'} } }
   q.sm=0; q.sec=tsec(op,l); return q }
 function openTrain(){ modal('Entrenamiento','<h3>¿Qué quieres practicar?</h3><div class="tabs">'+Object.keys(OPS).map(k=>'<button data-act="top" data-k="'+k+'" aria-pressed="'+(tr.op===k)+'">'+OPS[k][1]+' '+OPS[k][0]+'</button>').join('')+'</div><h3>Elige nivel</h3>'+
-  TLV[tr.op].map((d,i)=>'<div class="item"><div class="t">Nivel '+(i+1)+(S.train[tr.op+i]?' ✅':'')+'<small>'+d+' · '+tsec(tr.op,i)+' segundos por cuenta</small></div><button class="btn" data-act="tgo" data-l="'+i+'">Jugar</button></div>').join('')) }
+  TLV[tr.op].map((d,i)=>'<div class="item"><div class="t">Nivel '+(i+1)+(S.train[tr.op+i]?' ✅':'')+'<small>'+d+(pace()==='off'?'':' · '+Math.round(tsec(tr.op,i)*tmul())+' segundos por cuenta')+'</small></div><button class="btn" data-act="tgo" data-l="'+i+'">Jugar</button></div>').join('')) }
 function startTrain(l){ tr.l=l; $('modal').hidden=true; modalClose=null; HERO.path=[];HERO.held=-1; trans={t0:performance.now(),e:null,boss:null,train:{op:tr.op,l}}; setState('trans'); sfx.bad() }
 
 /* ================= ventanas ================= */
@@ -595,7 +598,7 @@ function lockAnswer(btn){ const q=lock.q; if(+btn.dataset.v===q.ans){ if(lock.tr
     else lockAsk();
   } else { btn.classList.add('no'); sfx.bad(); if(lock.tries===0){S.stats.ko++; if(q.fact)bump(q.fact,false)} lock.tries++; lock.n=0; $('lhint').textContent=lock.tries>=2?'La respuesta es '+q.ans+'.':q.hint; $('mBody').querySelector('.locks').textContent='🔒 🔒 🔒' } }
 let tab='heroe';
-function openMenu(t){ tab=t||tab; const tabs='<div class="tabs">'+[['heroe','Héroe'],['bestiario','Bestiario'],['padres','Padres (mantén pulsado)']].map(x=>'<button data-act="tab" data-t="'+x[0]+'" aria-pressed="'+(tab===x[0])+'">'+x[1]+'</button>').join('')+'</div>'; let h='';
+function openMenu(t){ tab=t||tab; const tabs='<div class="tabs">'+[['heroe','Héroe'],['bestiario','Bestiario'],['padres','Padres (mantén pulsado 1 segundo)']].map(x=>'<button data-act="tab" data-t="'+x[0]+'" aria-pressed="'+(tab===x[0])+'">'+x[1]+'</button>').join('')+'</div>'; let h='';
   if(tab==='heroe'){ h='<div class="kv"><div><b>'+S.lvl+'</b>nivel · cinturón '+belt()[0]+'</div><div><b>'+S.hp+' / '+maxHP()+'</b>vida</div><div><b>'+atk()+'</b>ataque</div><div><b>'+S.coins+'</b>monedas</div><div><b>'+S.boss.filter(Boolean).length+' / 4</b>cristales</div><div><b>'+Object.keys(S.chest).length+' / 12</b>cofres</div></div>'+
     '<h3>Tu aspecto</h3><div class="looks">'+LOOKS.map((l,i)=>'<button data-act="look" data-i="'+i+'" aria-pressed="'+(S.look===i)+'" aria-label="Aspecto '+(i+1)+'"><i data-im="h:'+i+'"></i></button>').join('')+'</div>'+
     '<p style="color:var(--muted)">Toca el mapa para caminar. Toca un monstruo, un cofre o el dojo para ir hasta ellos. Las hogueras curan y guardan la partida.</p>' }
@@ -608,11 +611,11 @@ function parentsHTML(){ const st=S.stats,tot=st.ok+st.ko,mast=Object.values(S.fa
   const NM=['sin practicar','le cuesta','aprendiendo','aprendiendo','dominada']; let t='<tr><th>×</th>'; for(let b=1;b<=10;b++)t+='<th>'+b+'</th>'; t+='</tr>';
   for(let a=1;a<=10;a++){t+='<tr><th>'+a+'</th>'; for(let b=1;b<=10;b++){const f=S.facts[fk(a,b)],c=!f?'':f.b>=3?'h3':f.b>=1?'h2':'h1'; t+='<td class="'+c+'" aria-label="'+a+' × '+b+', '+(f?NM[f.b+1]:NM[0])+'">'+a*b+'</td>'} t+='</tr>'}
   const hard=Object.entries(S.facts).filter(e=>e[1].ko>0&&e[1].b<3).sort((x,y)=>x[1].b-y[1].b||y[1].ko-x[1].ko).slice(0,6).map(e=>{const p=e[0].split('x');return p[0]+' × '+p[1]+' ('+e[1].ko+(e[1].ko===1?' fallo)':' fallos)')});
-  return '<div class="kv"><div><b>'+st.battles+'</b>combates ganados</div><div><b>'+(tot?Math.round(100*st.ok/tot)+' %':'—')+'</b>aciertos a la primera</div><div><b>'+mast+' / 55</b>multiplicaciones dominadas</div><div><b>'+Math.round((st.days[today()]||0)/60)+' min</b>hoy</div><div><b>'+Math.round(wk/60)+' min</b>últimos 7 días</div></div>'+
-   '<h3>Mapa de las tablas</h3><p style="color:var(--muted);font-family:system-ui,sans-serif;font-size:.9rem">Verde (✓): acertada a la primera tres veces en al menos dos días. Amarillo: aprendiendo. Rojo (!): le cuesta.</p><div class="scroll"><table class="heat">'+t+'</table></div>'+
-   (hard.length?'<p style="font-family:system-ui,sans-serif"><b>Las que más falla:</b> '+hard.join(', ')+'</p>':'')+
-   '<div class="sw"><span>Tiempo límite en los combates</span><button class="btn alt" data-act="set" data-k="timer">'+(S.set.timer?'Sí':'No')+'</button></div><div class="sw"><span>Sonido</span><button class="btn alt" data-act="set" data-k="sound">'+(S.set.sound?'Sí':'No')+'</button></div>'+
-   '<p style="color:var(--muted);font-family:system-ui,sans-serif;font-size:.9rem">'+(saveOK?'La partida se guarda en el navegador de este dispositivo.':'Este navegador no deja guardar la partida.')+'</p>'+
+  return '<h3>Mapa de las tablas</h3><div class="scroll"><table class="heat">'+t+'</table></div><p style="color:var(--muted);font-size:.9rem">Verde (✓): acertada a la primera tres veces en al menos dos días. Amarillo: aprendiendo. Rojo (!): le cuesta. Gris: sin practicar.</p>'+
+   (hard.length?'<p><b>Las que más falla:</b> '+hard.join(', ')+'</p>':'')+
+   '<div class="kv"><div><b>'+st.battles+'</b>combates ganados</div><div><b>'+(tot?Math.round(100*st.ok/tot)+' %':'—')+'</b>aciertos a la primera</div><div><b>'+mast+' / 55</b>multiplicaciones dominadas</div><div><b>'+Math.round((st.days[today()]||0)/60)+' min</b>hoy</div><div><b>'+Math.round(wk/60)+' min</b>últimos 7 días</div></div>'+
+   '<div class="sw"><span>Ritmo de los combates<br><small style="color:var(--muted);font-weight:400">Tranquilo: mucho tiempo y no pasa nada si se acaba. Rápido: el monstruo ataca si se acaba. Sin tiempo: no hay barra.</small></span><button class="btn alt" data-act="pace">'+PACE[pace()]+'</button></div><div class="sw"><span>Sonido</span><button class="btn alt" data-act="set" data-k="sound">'+(S.set.sound?'Sí':'No')+'</button></div>'+
+   '<p style="color:var(--muted);font-size:.9rem">'+(saveOK?'La partida se guarda en el navegador de este dispositivo.':'Este navegador no deja guardar la partida.')+'</p>'+
    '<div class="sw"><span>Borrar la partida y empezar de cero</span><button class="btn alt" data-act="reset">Borrar</button></div><div id="rAsk" hidden class="sw"><span>¿Seguro? Se pierde todo.</span><button class="btn" data-act="reset2">Sí, borrar</button></div>' }
 let holdT=null;
 $('mBody').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-t="padres"]'); if(b){clearTimeout(holdT);holdT=setTimeout(()=>openMenu('padres'),1200)}});
@@ -627,6 +630,7 @@ $('mBody').addEventListener('click',e=>{ const b=e.target.closest('[data-act]');
   else if(a==='tgo')startTrain(+b.dataset.l)
   else if(a==='tab'){ if(b.dataset.t!=='padres')openMenu(b.dataset.t); else if(e.detail===0)openMenu('padres') }
   else if(a==='look'){S.look=+b.dataset.i;save();openMenu('heroe')}
+  else if(a==='pace'){const o=['calm','fast','off'];S.set.pace=o[(o.indexOf(pace())+1)%3];save();openMenu('padres')}
   else if(a==='set'){S.set[b.dataset.k]=!S.set[b.dataset.k];save();openMenu('padres')}
   else if(a==='reset')$('rAsk').hidden=false;
   else if(a==='reset2'){const keep=S.set;S=fresh();S.set=keep;S.intro=1;save();HERO.x=HERO.fx=S.x;HERO.y=HERO.fy=S.y;HERO.t=1;curZone=0;ENEMIES.forEach(e=>{e.alive=true;e.x=e.fx=e.hx;e.y=e.fy=e.hy});closeModal()} });
@@ -653,7 +657,7 @@ window.addEventListener('keyup',e=>{ if(KEYS[e.key]===HERO.held)HERO.held=-1 });
 window.addEventListener('resize',resize);
 document.addEventListener('visibilitychange',()=>{last=performance.now(); if(document.hidden)save()});
 $('playBtn').onclick=()=>{ setState('world'); hud(); banner(ZNAME[curZone]);
-  if(!S.intro){ S.intro=1; save(); modal('Bienvenido a Arkania','<p>Eres aprendiz de ninja y empiezas con el cinturón blanco. Los monstruos atacan con cuentas. Cada uno usa un tipo distinto: elige a cuál te enfrentas.</p><p>Si aciertas, golpeas. Si aciertas rápido, el golpe es <b>crítico</b>. Si encadenas aciertos, haces <b>combo</b> y pegas más fuerte.</p><p>Toca el mapa para caminar, o deja el dedo puesto y el ninja te sigue. La flecha amarilla lleva al primer guardián.</p><div class="brow"><button class="btn" data-act="close">Empezar</button></div>') } };
+  if(!S.intro){ S.intro=1; save(); modal('Bienvenido a Arkania','<p>Eres aprendiz de ninja y empiezas con el cinturón blanco. Los monstruos atacan con cuentas. Cada uno usa un tipo distinto: elige a cuál te enfrentas.</p><p>Si aciertas, golpeas. Si aciertas antes de que se vacíe la barra amarilla, el golpe es <b>crítico</b>; si se vacía, no pasa nada. Si encadenas aciertos, haces <b>combo</b> y pegas más fuerte.</p><p>Toca el mapa para caminar, o deja el dedo puesto y el ninja te sigue. La flecha amarilla lleva al primer guardián.</p><div class="brow"><button class="btn" data-act="close">Empezar</button></div>') } };
 
 /* ================= arranque ================= */
 genWorld(); buildTiles();
