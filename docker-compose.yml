@@ -1,0 +1,12 @@
+services:
+  arkania:
+    image: nginx:alpine
+    container_name: arkania
+    restart: unless-stopped
+    ports:
+      - "8085:80"
+    command: >
+      sh -c "while true; do
+      wget -q -O /tmp/i.html https://raw.githubusercontent.com/davidgope/arkania/main/index.html
+      && mv /tmp/i.html /usr/share/nginx/html/index.html;
+      sleep 300; done & nginx -g 'daemon off;'"
